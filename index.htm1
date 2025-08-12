@@ -1,0 +1,153 @@
+<!DOCTYPE html><html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英语学习助手 Pro</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+    }
+    header {
+        background: #4CAF50;
+        color: white;
+        padding: 15px;
+        font-size: 20px;
+    }
+    .card {
+        background: white;
+        margin: 15px auto;
+        padding: 20px;
+        width: 90%;
+        max-width: 400px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        cursor: pointer;
+        font-size: 18px;
+        white-space: pre-line;
+    }
+    button {
+        background: #4CAF50;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        margin: 10px;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+    button:hover {
+        background: #45a049;
+    }
+    input {
+        padding: 10px;
+        font-size: 16px;
+        width: 80%;
+        max-width: 300px;
+        margin: 10px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+    }
+    .section {
+        margin: 20px;
+    }
+</style>
+</head>
+<body><header>📚 英语学习助手 Pro</header><!-- 单词卡片 --><div class="section">
+    <h2>单词卡片</h2>
+    <div class="card" id="wordCard">点击显示中文释义</div>
+    <button onclick="nextWord()">下一个单词</button>
+    <button onclick="speak(currentWord.en)">🔊 朗读</button>
+</div><!-- 每日一句 --><div class="section">
+    <h2>每日一句</h2>
+    <div class="card" id="dailySentence">点击获取句子</div>
+    <button onclick="showSentence()">获取一句</button>
+    <button onclick="speak(currentSentence.en)">🔊 朗读</button>
+</div><!-- 测验模式 --><div class="section">
+    <h2>测验模式</h2>
+    <div class="card" id="quizWord">点击开始测验</div>
+    <input type="text" id="quizAnswer" placeholder="输入中文意思">
+    <br>
+    <button onclick="checkAnswer()">检查答案</button>
+    <button onclick="nextQuiz()">下一个题目</button>
+</div><script>
+    let words = [
+        {en: "apple", zh: "苹果", score: 0},
+        {en: "beautiful", zh: "美丽的", score: 0},
+        {en: "computer", zh: "电脑", score: 0},
+        {en: "success", zh: "成功", score: 0},
+        {en: "challenge", zh: "挑战", score: 0}
+    ];
+
+    let wordIndex = 0;
+    let showMeaning = false;
+    let currentWord = words[0];
+    let currentSentence = {en: "", zh: ""};
+
+    function speak(text) {
+        if (!text) return;
+        let utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "en-US";
+        speechSynthesis.speak(utterance);
+    }
+
+    function nextWord() {
+        showMeaning = false;
+        words.sort((a,b) => a.score - b.score); // 低分优先
+        currentWord = words[wordIndex % words.length];
+        document.getElementById('wordCard').innerText = currentWord.en;
+        speak(currentWord.en);
+        wordIndex++;
+    }
+
+    document.getElementById('wordCard').addEventListener('click', function(){
+        if (!showMeaning) {
+            this.innerText = currentWord.zh;
+            showMeaning = true;
+        } else {
+            this.innerText = currentWord.en;
+            showMeaning = false;
+        }
+    });
+
+    const sentences = [
+        {en: "The best way to predict the future is to create it.", zh: "预测未来的最好方法就是创造它。"},
+        {en: "Practice makes perfect.", zh: "熟能生巧。"},
+        {en: "Never give up on your dreams.", zh: "永远不要放弃你的梦想。"}
+    ];
+
+    function showSentence() {
+        currentSentence = sentences[Math.floor(Math.random() * sentences.length)];
+        document.getElementById('dailySentence').innerText = currentSentence.en + "\n" + currentSentence.zh;
+        speak(currentSentence.en);
+    }
+
+    // 测验模式
+    let quizIndex = 0;
+    function nextQuiz() {
+        words.sort((a,b) => a.score - b.score);
+        currentWord = words[quizIndex % words.length];
+        document.getElementById('quizWord').innerText = currentWord.en;
+        document.getElementById('quizAnswer').value = "";
+        quizIndex++;
+        speak(currentWord.en);
+    }
+
+    function checkAnswer() {
+        let ans = document.getElementById('quizAnswer').value.trim();
+        if (ans === currentWord.zh) {
+            alert("✅ 正确！");
+            currentWord.score++;
+        } else {
+            alert(`❌ 错误，正确答案是：${currentWord.zh}`);
+            currentWord.score = Math.max(0, currentWord.score - 1);
+        }
+    }
+
+    // 初始化
+    nextWord();
+</script></body>
+</html>
