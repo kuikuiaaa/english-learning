@@ -1,153 +1,268 @@
-<!DOCTYPE html><html lang="zh">
+<!DOCTYPE html>
+<html lang="zh">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>英语学习助手 Pro</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>英语学习助手 Pro（CET-4 完整词库）</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #f5f5f5;
-        margin: 0;
-        padding: 0;
-        text-align: center;
-    }
-    header {
-        background: #4CAF50;
-        color: white;
-        padding: 15px;
-        font-size: 20px;
-    }
-    .card {
-        background: white;
-        margin: 15px auto;
-        padding: 20px;
-        width: 90%;
-        max-width: 400px;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        cursor: pointer;
-        font-size: 18px;
-        white-space: pre-line;
-    }
-    button {
-        background: #4CAF50;
-        color: white;
-        border: none;
-        padding: 12px 20px;
-        margin: 10px;
-        border-radius: 5px;
-        font-size: 16px;
-        cursor: pointer;
-    }
-    button:hover {
-        background: #45a049;
-    }
-    input {
-        padding: 10px;
-        font-size: 16px;
-        width: 80%;
-        max-width: 300px;
-        margin: 10px;
-        border-radius: 5px;
-        border: 1px solid #ccc;
-    }
-    .section {
-        margin: 20px;
-    }
+  body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding:0; text-align:center; }
+  header { background:#4CAF50; color:#fff; padding:15px; font-size:20px; }
+  .container { max-width:900px; margin:0 auto; padding:16px; }
+  .status { font-size:14px; color:#555; margin:8px 0 16px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+  .card { background:#fff; padding:18px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,.08); cursor:pointer; white-space:pre-line; }
+  .card h2 { margin:0 0 8px; font-size:18px; }
+  .big { font-size:22px; }
+  button { background:#4CAF50; color:#fff; border:0; padding:10px 16px; border-radius:8px; font-size:15px; cursor:pointer; margin:6px; }
+  button:hover { background:#45a049; }
+  input, .pill { padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; }
+  .row { margin:12px 0; }
+  .pill { display:inline-block; background:#fff; }
+  .muted { color:#777; font-size:13px; }
 </style>
 </head>
-<body><header>📚 英语学习助手 Pro</header><!-- 单词卡片 --><div class="section">
-    <h2>单词卡片</h2>
-    <div class="card" id="wordCard">点击显示中文释义</div>
-    <button onclick="nextWord()">下一个单词</button>
-    <button onclick="speak(currentWord.en)">🔊 朗读</button>
-</div><!-- 每日一句 --><div class="section">
-    <h2>每日一句</h2>
-    <div class="card" id="dailySentence">点击获取句子</div>
-    <button onclick="showSentence()">获取一句</button>
-    <button onclick="speak(currentSentence.en)">🔊 朗读</button>
-</div><!-- 测验模式 --><div class="section">
-    <h2>测验模式</h2>
-    <div class="card" id="quizWord">点击开始测验</div>
-    <input type="text" id="quizAnswer" placeholder="输入中文意思">
-    <br>
-    <button onclick="checkAnswer()">检查答案</button>
-    <button onclick="nextQuiz()">下一个题目</button>
-</div><script>
-    let words = [
-        {en: "apple", zh: "苹果", score: 0},
-        {en: "beautiful", zh: "美丽的", score: 0},
-        {en: "computer", zh: "电脑", score: 0},
-        {en: "success", zh: "成功", score: 0},
-        {en: "challenge", zh: "挑战", score: 0}
-    ];
+<body>
+  <header>📚 英语学习助手 Pro（CET-4 完整词库）</header>
+  <div class="container">
+    <div class="status" id="loadStatus">正在加载四级词库……</div>
 
-    let wordIndex = 0;
-    let showMeaning = false;
-    let currentWord = words[0];
-    let currentSentence = {en: "", zh: ""};
+    <div class="row">
+      <span class="pill">已加载词数：<b id="wordCount">0</b></span>
+      <span class="pill">去重后：<b id="uniqueCount">0</b></span>
+      <button id="downloadBtn" title="导出为 JSON 文件">下载词库 JSON</button>
+    </div>
 
-    function speak(text) {
-        if (!text) return;
-        let utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = "en-US";
-        speechSynthesis.speak(utterance);
+    <div class="row">
+      <input id="searchInput" placeholder="搜索英文或中文释义（实时过滤）" />
+      <button id="resetSearch">清除搜索</button>
+    </div>
+
+    <div class="grid">
+      <!-- 单词卡片 -->
+      <div class="card" id="wordCardWrap">
+        <h2>单词卡片</h2>
+        <div class="big" id="wordCard">点击显示中文释义</div>
+        <div class="row">
+          <button id="nextWordBtn">下一个单词</button>
+          <button id="speakWordBtn">🔊 朗读</button>
+        </div>
+        <div class="muted">点卡片在英文/中文间切换</div>
+      </div>
+
+      <!-- 每日一句（示例固定） -->
+      <div class="card">
+        <h2>每日一句</h2>
+        <div class="big" id="dailySentence">点击获取句子</div>
+        <div class="row">
+          <button id="showSentenceBtn">获取一句</button>
+          <button id="speakSentenceBtn">🔊 朗读</button>
+        </div>
+      </div>
+
+      <!-- 测验模式 -->
+      <div class="card">
+        <h2>测验模式</h2>
+        <div class="big" id="quizWord">点击开始测验</div>
+        <div class="row">
+          <input type="text" id="quizAnswer" placeholder="输入中文意思" />
+        </div>
+        <div class="row">
+          <button id="checkAnswerBtn">检查答案</button>
+          <button id="nextQuizBtn">下一个题目</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row muted" style="margin-top:18px">
+      词库来源：开源四级词表（含释义），页面自动去重并加载。
+    </div>
+  </div>
+
+<script>
+/** ========= 词库加载（完整四级，含中文，自动去重） =========
+ * 主源：GitHub 原始文件（raw.githubusercontent.com）
+ * 备源：jsDelivr CDN（防止偶发跨域/网络问题）
+ * 解析规则：逐行按制表符 \t 切分，第一列视为英文，其余列合并为中文释义
+ */
+const SOURCE_URLS = [
+  // cuttlin/Vocabulary-of-CET-4 -> TXT/总表/四级词汇总表.txt
+  "https://raw.githubusercontent.com/cuttlin/Vocabulary-of-CET-4/master/TXT/%E6%80%BB%E8%A1%A8/%E5%9B%9B%E7%BA%A7%E8%AF%8D%E6%B1%87%E6%80%BB%E8%A1%A8.txt",
+  "https://cdn.jsdelivr.net/gh/cuttlin/Vocabulary-of-CET-4/TXT/%E6%80%BB%E8%A1%A8/%E5%9B%9B%E7%BA%A7%E8%AF%8D%E6%B1%87%E6%80%BB%E8%A1%A8.txt"
+];
+
+let rawLines = [];
+let wordsAll = [];      // 全量（含重复、空行清理前）
+let words = [];         // 去重后可用词库 {en, zh, score}
+let filtered = null;    // 搜索过滤
+let wordIndex = 0;
+let quizIndex = 0;
+let showMeaning = false;
+let currentWord = { en: "", zh: "", score: 0 };
+let currentSentence = { en: "", zh: "" };
+
+const $ = (id) => document.getElementById(id);
+
+const dailySentences = [
+  { en: "The best way to predict the future is to create it.", zh: "预测未来的最好方法就是创造它。" },
+  { en: "Practice makes perfect.", zh: "熟能生巧。" },
+  { en: "Never give up on your dreams.", zh: "永远不要放弃你的梦想。" }
+];
+
+function speak(text, lang = "en-US") {
+  if (!text) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  speechSynthesis.speak(u);
+}
+
+async function loadCet4List() {
+  const statusEl = $("loadStatus");
+  for (const url of SOURCE_URLS) {
+    try {
+      statusEl.textContent = "正在加载词库…（源：" + url.split("/")[2] + "）";
+      const resp = await fetch(url, { cache: "no-store" });
+      if (!resp.ok) continue;
+      const text = await resp.text();
+
+      // 统一换行符，去掉 BOM
+      const t = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+      rawLines = t.split("\n").filter(line => line.trim().length > 0);
+
+      // 解析每一行：第一列英文，其余列并成中文
+      const tmp = [];
+      for (const line of rawLines) {
+        const cols = line.split(/\t+/);
+        let en = (cols[0] || "").trim();
+        let zh = cols.slice(1).join("；").trim();
+        if (!en) continue;
+        // 某些表可能把释义放到单列里，兜底为空则跳过
+        if (!zh) continue;
+        tmp.push({ en, zh });
+      }
+
+      $("wordCount").textContent = tmp.length;
+
+      // 去重：英文小写去重
+      const seen = new Set();
+      words = tmp.filter(item => {
+        const key = item.en.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).map(x => ({ ...x, score: 0 }));
+
+      $("uniqueCount").textContent = words.length;
+      statusEl.textContent = "词库加载完成 ✅";
+      return; // 成功则退出
+    } catch (e) {
+      // 尝试下一个源
     }
+  }
+  $("loadStatus").textContent = "❌ 词库加载失败，请刷新重试或检查网络。";
+}
 
-    function nextWord() {
-        showMeaning = false;
-        words.sort((a,b) => a.score - b.score); // 低分优先
-        currentWord = words[wordIndex % words.length];
-        document.getElementById('wordCard').innerText = currentWord.en;
-        speak(currentWord.en);
-        wordIndex++;
-    }
+function pool() {
+  return filtered && filtered.length ? filtered : words;
+}
 
-    document.getElementById('wordCard').addEventListener('click', function(){
-        if (!showMeaning) {
-            this.innerText = currentWord.zh;
-            showMeaning = true;
-        } else {
-            this.innerText = currentWord.en;
-            showMeaning = false;
-        }
-    });
+function nextWord() {
+  const list = pool();
+  if (!list.length) return;
+  showMeaning = false;
+  // 低分优先（更常出现）
+  list.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+  currentWord = list[wordIndex % list.length];
+  $("wordCard").textContent = currentWord.en;
+  speak(currentWord.en);
+  wordIndex++;
+}
 
-    const sentences = [
-        {en: "The best way to predict the future is to create it.", zh: "预测未来的最好方法就是创造它。"},
-        {en: "Practice makes perfect.", zh: "熟能生巧。"},
-        {en: "Never give up on your dreams.", zh: "永远不要放弃你的梦想。"}
-    ];
+$("wordCardWrap").addEventListener("click", () => {
+  if (!currentWord.en) return;
+  if (showMeaning) {
+    $("wordCard").textContent = currentWord.en;
+  } else {
+    $("wordCard").textContent = currentWord.zh;
+  }
+  showMeaning = !showMeaning;
+});
 
-    function showSentence() {
-        currentSentence = sentences[Math.floor(Math.random() * sentences.length)];
-        document.getElementById('dailySentence').innerText = currentSentence.en + "\n" + currentSentence.zh;
-        speak(currentSentence.en);
-    }
+function showSentence() {
+  currentSentence = dailySentences[Math.floor(Math.random() * dailySentences.length)];
+  $("dailySentence").textContent = currentSentence.en + "\n" + currentSentence.zh;
+  speak(currentSentence.en);
+}
 
-    // 测验模式
-    let quizIndex = 0;
-    function nextQuiz() {
-        words.sort((a,b) => a.score - b.score);
-        currentWord = words[quizIndex % words.length];
-        document.getElementById('quizWord').innerText = currentWord.en;
-        document.getElementById('quizAnswer').value = "";
-        quizIndex++;
-        speak(currentWord.en);
-    }
+// 测验
+function nextQuiz() {
+  const list = pool();
+  if (!list.length) return;
+  list.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+  currentWord = list[quizIndex % list.length];
+  $("quizWord").textContent = currentWord.en;
+  $("quizAnswer").value = "";
+  quizIndex++;
+  speak(currentWord.en);
+}
 
-    function checkAnswer() {
-        let ans = document.getElementById('quizAnswer').value.trim();
-        if (ans === currentWord.zh) {
-            alert("✅ 正确！");
-            currentWord.score++;
-        } else {
-            alert(`❌ 错误，正确答案是：${currentWord.zh}`);
-            currentWord.score = Math.max(0, currentWord.score - 1);
-        }
-    }
+function checkAnswer() {
+  const ans = $("quizAnswer").value.trim();
+  if (!currentWord.en) return;
+  if (ans && currentWord.zh.includes(ans)) {
+    alert("✅ 正确！");
+    currentWord.score = (currentWord.score ?? 0) + 1;
+  } else {
+    alert(`❌ 错误，正确答案示例：${currentWord.zh}`);
+    currentWord.score = Math.max(0, (currentWord.score ?? 0) - 1);
+  }
+}
 
-    // 初始化
+// 搜索（英文或中文）
+$("searchInput").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  if (!q) { filtered = null; return; }
+  filtered = words.filter(w =>
+    w.en.toLowerCase().includes(q) || (w.zh || "").toLowerCase().includes(q)
+  );
+  // 搜索时重置索引
+  wordIndex = 0; quizIndex = 0;
+});
+$("resetSearch").addEventListener("click", () => {
+  $("searchInput").value = "";
+  filtered = null;
+});
+
+// 导出 JSON（去重后的完整词库）
+$("downloadBtn").addEventListener("click", () => {
+  if (!words.length) { alert("词库未加载完成"); return; }
+  const data = words.map(({en, zh}) => ({ en, zh }));
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "cet4_words.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// 事件绑定
+$("nextWordBtn").addEventListener("click", nextWord);
+$("speakWordBtn").addEventListener("click", () => speak(currentWord.en));
+$("showSentenceBtn").addEventListener("click", showSentence);
+$("speakSentenceBtn").addEventListener("click", () => speak(currentSentence.en));
+$("checkAnswerBtn").addEventListener("click", checkAnswer);
+$("nextQuizBtn").addEventListener("click", nextQuiz);
+
+// 启动
+(async () => {
+  await loadCet4List();
+  if (words.length) {
     nextWord();
-</script></body>
+  }
+})();
+</script>
+</body>
 </html>
+
